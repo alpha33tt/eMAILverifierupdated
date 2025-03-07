@@ -1,6 +1,5 @@
 const express = require('express');
 const dns = require('dns');
-const mxRecords = require('mx-records');
 
 const app = express();
 const port = 3000;
@@ -11,27 +10,41 @@ app.use(express.json());
 // Validate email domain with MX record lookup
 function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
-        mxRecords(domain, (err, records) => {
+        dns.resolveMx(domain, (err, records) => {
             if (err || records.length === 0) {
-                reject(false);
+                reject(false); // Reject if no MX records found
             } else {
-                resolve(true);
+                resolve(true); // Resolve if MX records found
             }
         });
     });
+}
+
+// Validate the email format using a regular expression
+function isValidEmailFormat(email) {
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email);
 }
 
 // Endpoint to validate emails
 app.post('/validate-emails', async (req, res) => {
     const emails = req.body.emails;
     const validEmails = [];
+    const invalidEmails = [];
 
-    if (!emails) {
+    if (!emails || emails.length === 0) {
         return res.status(400).json({ error: 'No emails provided' });
     }
 
     for (const email of emails) {
         const trimmedEmail = email.trim();
+
+        // Validate email format
+        if (!isValidEmailFormat(trimmedEmail)) {
+            invalidEmails.push({ email: trimmedEmail, reason: 'Invalid email format' });
+            continue;
+        }
+
         const domain = trimmedEmail.split('@')[1];
 
         if (domain && domain.includes('.')) {
@@ -40,14 +53,18 @@ app.post('/validate-emails', async (req, res) => {
                 const isValid = await isValidDomain(domain);
                 if (isValid) {
                     validEmails.push(trimmedEmail);
+                } else {
+                    invalidEmails.push({ email: trimmedEmail, reason: 'No MX records found' });
                 }
             } catch (error) {
-                // Domain is not valid
+                invalidEmails.push({ email: trimmedEmail, reason: 'Error during MX lookup' });
             }
+        } else {
+            invalidEmails.push({ email: trimmedEmail, reason: 'Invalid domain' });
         }
     }
 
-    res.json({ validEmails });
+    res.json({ validEmails, invalidEmails });
 });
 
 // Serve static files (like index.html)
