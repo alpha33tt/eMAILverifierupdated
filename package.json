@@ -8,9 +8,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "express": "^4.17.1",
     "whois": "^2.5.0",
-    "pino": "^8.7.0"
+    "pino": "^8.7.0",
+    "axios": "^1.4.0"  // Add this line for axios
   },
   "devDependencies": {
     "yarn": "^1.22.22"
