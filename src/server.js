@@ -1,22 +1,36 @@
 const express = require('express');
 const dns = require('dns');
-const path = require('path');
+const mxRecords = require('mx-records');
+
 const app = express();
 const port = 3000;
 
 app.use(express.json());
 
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, '../public')));
+// Check email syntax
+function isValidEmailFormat(email) {
+    const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return regex.test(email);
+}
 
-// Perform MX record lookup using the built-in DNS module
+// Check if the domain is disposable
+const disposableEmailProviders = [
+    'mailinator.com', '10minutemail.com', 'guerrillamail.com', // etc.
+];
+
+function isDisposableEmail(email) {
+    const domain = email.split('@')[1];
+    return disposableEmailProviders.includes(domain);
+}
+
+// Validate email domain with MX record lookup
 function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
-        dns.resolveMx(domain, (err, addresses) => {
-            if (err || addresses.length === 0) {
-                reject('No MX records found');
+        mxRecords(domain, (err, records) => {
+            if (err || records.length === 0) {
+                reject(false);
             } else {
-                resolve(true); // Domain has valid MX records
+                resolve(true);
             }
         });
     });
@@ -29,18 +43,36 @@ app.post('/validate-emails', async (req, res) => {
     const invalidEmails = [];
 
     for (const email of emails) {
-        const domain = email.trim().split('@')[1];
-        
+        const trimmedEmail = email.trim();
+
+        // Syntax check
+        if (!isValidEmailFormat(trimmedEmail)) {
+            invalidEmails.push(trimmedEmail);
+            continue;
+        }
+
+        // Disposable email check
+        if (isDisposableEmail(trimmedEmail)) {
+            invalidEmails.push(trimmedEmail);
+            continue;
+        }
+
+        const domain = trimmedEmail.split('@')[1];
+
         if (domain && domain.includes('.')) {
             try {
                 // Perform MX lookup on the domain
-                await isValidDomain(domain); // wait for MX validation
-                validEmails.push(email); // If valid, add to validEmails
+                const isValid = await isValidDomain(domain);
+                if (isValid) {
+                    validEmails.push(trimmedEmail);
+                } else {
+                    invalidEmails.push(trimmedEmail);
+                }
             } catch (error) {
-                invalidEmails.push(email); // If invalid, add to invalidEmails
+                invalidEmails.push(trimmedEmail); // Domain lookup failed, consider it invalid
             }
         } else {
-            invalidEmails.push(email); // Invalid format
+            invalidEmails.push(trimmedEmail); // Invalid domain format
         }
     }
 
@@ -48,5 +80,5 @@ app.post('/validate-emails', async (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+    console.log(`Server is running on http://localhost:${port}`);
 });
