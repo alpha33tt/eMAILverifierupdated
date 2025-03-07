@@ -13,9 +13,9 @@ function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
         dns.resolveMx(domain, (err, addresses) => {
             if (err || addresses.length === 0) {
-                reject(false);
+                reject(false); // If MX records not found, invalid domain
             } else {
-                resolve(true);
+                resolve(true); // MX records found, valid domain
             }
         });
     });
@@ -35,7 +35,7 @@ app.post('/validate-emails', async (req, res) => {
                 // Perform MX lookup on the domain
                 const isValid = await isValidDomain(domain);
                 if (isValid) {
-                    validEmails.push(trimmedEmail);
+                    validEmails.push(trimmedEmail); // Add valid email
                 }
             } catch (error) {
                 // Domain is not valid
@@ -43,10 +43,10 @@ app.post('/validate-emails', async (req, res) => {
         }
     }
 
-    res.json({ validEmails });
+    res.json({ validEmails }); // Send back the valid emails list
 });
 
-// If no other routes match, serve index.html
+// If no other routes match, serve index.html (this will handle the root path)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
