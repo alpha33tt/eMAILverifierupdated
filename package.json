@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "whois": "^2.5.0",
-    "dns": "^1.2.3",
     "pino": "^8.7.0"
   },
   "devDependencies": {
