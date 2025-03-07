@@ -1,9 +1,13 @@
 const express = require('express');
 const dns = require('dns');
+const path = require('path');
 const app = express();
 const port = 3000;
 
 app.use(express.json());
+
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Perform MX record lookup using the built-in DNS module
 function isValidDomain(domain) {
