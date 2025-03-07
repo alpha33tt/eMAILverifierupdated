@@ -1,32 +1,55 @@
 const express = require('express');
 const dns = require('dns');
+const axios = require('axios');  // Used for blacklist check
+const whois = require('whois');  // Used for additional domain info
 
 const app = express();
 const port = 3000;
 
-// Middleware to parse JSON bodies
 app.use(express.json());
 
-// Validate email domain with MX record lookup
+// Function to check MX records
 function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
-        dns.resolveMx(domain, (err, records) => {
-            if (err || records.length === 0) {
-                reject(false); // Reject if no MX records found
+        dns.resolveMx(domain, (err, addresses) => {
+            if (err || addresses.length === 0) {
+                reject(false);
             } else {
-                resolve(true); // Resolve if MX records found
+                resolve(true);
             }
         });
     });
 }
 
-// Validate the email format using a regular expression
-function isValidEmailFormat(email) {
-    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return emailRegex.test(email);
+// Function to check if the domain is blacklisted
+async function isBlacklisted(domain) {
+    try {
+        const response = await axios.get(`https://api.abuseipdb.com/api/v2/check?ipAddress=${domain}`, {
+            headers: {
+                'Key': 'your-abuseipdb-api-key',  // Replace with your actual API key
+                'Accept': 'application/json'
+            }
+        });
+        return response.data.data.is_blacklisted ? 'Yes' : 'No';
+    } catch (error) {
+        return 'No';  // Default to No if there's an error in the API request
+    }
 }
 
-// Endpoint to validate emails
+// Function to get WHOIS data for a domain
+function getDomainWhois(domain) {
+    return new Promise((resolve, reject) => {
+        whois.lookup(domain, (err, data) => {
+            if (err) {
+                reject('Unable to retrieve WHOIS data');
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
+
+// Validate email addresses
 app.post('/validate-emails', async (req, res) => {
     const emails = req.body.emails;
     const validEmails = [];
@@ -38,38 +61,42 @@ app.post('/validate-emails', async (req, res) => {
 
     for (const email of emails) {
         const trimmedEmail = email.trim();
-
-        // Check for email format validity
-        if (!isValidEmailFormat(trimmedEmail)) {
-            invalidEmails.push({ email: trimmedEmail, reason: 'Invalid email format' });
-            continue;  // Skip further validation if the format is invalid
-        }
-
         const domain = trimmedEmail.split('@')[1];
 
         if (domain && domain.includes('.')) {
             try {
-                // Perform MX lookup on the domain
-                const isValid = await isValidDomain(domain);
-                if (isValid) {
-                    validEmails.push(trimmedEmail);  // Email is valid if MX record found
+                const isDomainValid = await isValidDomain(domain);
+
+                if (isDomainValid) {
+                    const blacklistStatus = await isBlacklisted(domain);
+                    const whoisData = await getDomainWhois(domain);
+                    validEmails.push({
+                        email: trimmedEmail,
+                        domain: domain,
+                        blacklist: blacklistStatus,
+                        whois: whoisData
+                    });
                 } else {
-                    invalidEmails.push({ email: trimmedEmail, reason: 'No MX records found' });
+                    invalidEmails.push({
+                        email: trimmedEmail,
+                        reason: 'Invalid domain (MX record not found)'
+                    });
                 }
             } catch (error) {
-                invalidEmails.push({ email: trimmedEmail, reason: 'Error during MX lookup' });
+                invalidEmails.push({
+                    email: trimmedEmail,
+                    reason: 'Invalid domain (MX record lookup failed)'
+                });
             }
         } else {
-            invalidEmails.push({ email: trimmedEmail, reason: 'Invalid domain' });
+            invalidEmails.push({
+                email: trimmedEmail,
+                reason: 'Invalid email format'
+            });
         }
     }
 
-    // Format the invalid emails to return readable strings
-    const formattedInvalidEmails = invalidEmails.map(item => {
-        return `${item.email} - Reason: ${item.reason}`;
-    });
-
-    res.json({ validEmails, invalidEmails: formattedInvalidEmails });
+    res.json({ validEmails, invalidEmails });
 });
 
 // Serve static files (like index.html)
