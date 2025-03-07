@@ -1,7 +1,7 @@
 const express = require('express');
 const dns = require('dns');
+const mxRecords = require('mx-records');
 const axios = require('axios');
-const whois = require('whois');
 
 const app = express();
 const port = 3000;
@@ -9,69 +9,26 @@ const port = 3000;
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-// Validate email domain with MX record lookup
+// Function to perform MX lookup on the domain
 function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
-        dns.resolveMx(domain, (err, records) => {
+        mxRecords(domain, (err, records) => {
             if (err || records.length === 0) {
-                reject(false); // Reject if no MX records found
+                reject(false);
             } else {
-                resolve(true); // Resolve if MX records found
+                resolve(true);
             }
         });
     });
 }
 
-// Validate the email format using a regular expression
-function isValidEmailFormat(email) {
-    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return emailRegex.test(email);
-}
-
-// Function to fetch domain information (whois lookup)
-function getDomainInfo(domain) {
-    return new Promise((resolve, reject) => {
-        whois.lookup(domain, (err, data) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(data);
-            }
-        });
-    });
-}
-
-// Function to check if the domain is blacklisted (example using EmailRep.io API)
-async function checkBlacklist(domain) {
-    const blacklistAPI = 'https://emailrep.io/' + domain;
+// Function to check if the email domain is blacklisted (for example, using EmailRep.io API)
+async function isBlacklisted(domain) {
     try {
-        const response = await axios.get(blacklistAPI, { headers: { 'User-Agent': 'Email Validation Service' } });
-        if (response.data.blacklist_count > 0) {
-            return {
-                isBlacklisted: true,
-                blacklistPercentage: response.data.blacklist_count / 100 // Example of percentage
-            };
-        } else {
-            return { isBlacklisted: false, blacklistPercentage: 0 };
-        }
+        const response = await axios.get(`https://emailrep.io/${domain}`);
+        return response.data.blacklisted ? { blacklisted: true, reason: response.data.reason, score: response.data.score } : { blacklisted: false };
     } catch (error) {
-        return { isBlacklisted: false, blacklistPercentage: 0 }; // Default to not blacklisted if error
-    }
-}
-
-// Function for SMTP validation (simplified version)
-async function checkSMTP(email) {
-    // For real SMTP check, you would query the SMTP server, here it's simplified.
-    const domain = email.split('@')[1];
-    try {
-        const smtpServer = await dns.promises.resolveMx(domain);
-        if (smtpServer && smtpServer.length > 0) {
-            return true; // SMTP server exists
-        } else {
-            return false; // No SMTP server found
-        }
-    } catch (err) {
-        return false;
+        return { blacklisted: false };  // If error occurs, assume not blacklisted
     }
 }
 
@@ -81,19 +38,12 @@ app.post('/validate-emails', async (req, res) => {
     const validEmails = [];
     const invalidEmails = [];
 
-    if (!emails || emails.length === 0) {
+    if (!emails) {
         return res.status(400).json({ error: 'No emails provided' });
     }
 
     for (const email of emails) {
         const trimmedEmail = email.trim();
-
-        // Check for email format validity
-        if (!isValidEmailFormat(trimmedEmail)) {
-            invalidEmails.push({ email: trimmedEmail, reason: 'Invalid email format' });
-            continue;  // Skip further validation if the format is invalid
-        }
-
         const domain = trimmedEmail.split('@')[1];
 
         if (domain && domain.includes('.')) {
@@ -101,37 +51,39 @@ app.post('/validate-emails', async (req, res) => {
                 // Perform MX lookup on the domain
                 const isValid = await isValidDomain(domain);
                 if (isValid) {
-                    // Get domain info from Whois lookup
-                    const domainInfo = await getDomainInfo(domain);
-                    // Check if the domain is blacklisted
-                    const blacklistInfo = await checkBlacklist(domain);
-                    // Perform SMTP check
-                    const isSMTPValid = await checkSMTP(trimmedEmail);
-                    
+                    // Check if domain is blacklisted
+                    const blacklistInfo = await isBlacklisted(domain);
                     validEmails.push({
                         email: trimmedEmail,
-                        domainInfo: domainInfo.split('\n')[0],  // Just the first line as an example
-                        isBlacklisted: blacklistInfo.isBlacklisted,
-                        blacklistPercentage: blacklistInfo.blacklistPercentage,
-                        isSMTPValid: isSMTPValid
+                        domain,
+                        blacklisted: blacklistInfo.blacklisted,
+                        reason: blacklistInfo.blacklisted ? blacklistInfo.reason : null,
+                        score: blacklistInfo.blacklisted ? blacklistInfo.score : null
                     });
                 } else {
-                    invalidEmails.push({ email: trimmedEmail, reason: 'No MX records found' });
+                    invalidEmails.push({
+                        email: trimmedEmail,
+                        reason: 'No MX records found'
+                    });
                 }
             } catch (error) {
-                invalidEmails.push({ email: trimmedEmail, reason: 'Error during validation' });
+                invalidEmails.push({
+                    email: trimmedEmail,
+                    reason: 'Error during validation'
+                });
             }
         } else {
-            invalidEmails.push({ email: trimmedEmail, reason: 'Invalid domain' });
+            invalidEmails.push({
+                email: trimmedEmail,
+                reason: 'Invalid email format'
+            });
         }
     }
 
-    // Format the invalid emails to return readable strings
-    const formattedInvalidEmails = invalidEmails.map(item => {
-        return `${item.email} - Reason: ${item.reason}`;
+    res.json({
+        validEmails: validEmails,
+        invalidEmails: invalidEmails
     });
-
-    res.json({ validEmails, invalidEmails: formattedInvalidEmails });
 });
 
 // Serve static files (like index.html)
