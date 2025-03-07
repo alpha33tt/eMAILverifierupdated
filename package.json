@@ -1,17 +1,17 @@
 {
-  "name": "email-validation",
+  "name": "email-validation-app",
   "version": "1.0.0",
-  "description": "Email Validation Tool",
-  "main": "src/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node src/server.js"
-  },
-  "engines": {
-    "node": "18.x"
+    "start": "node server.js",
+    "build": "yarn install"  // make sure this is included for build process
   },
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "mx-records": "^2.1.0",  // Ensure this is listed here
+    "dns": "0.0.0"  // You don't need to install this, as it's built-in with Node.js
   },
-  "author": "",
-  "license": "ISC"
+  "engines": {
+    "node": "16.x"
+  }
 }
