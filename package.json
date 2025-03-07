@@ -1,0 +1,17 @@
+{
+  "name": "email-validation",
+  "version": "1.0.0",
+  "description": "Email Validation Tool",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {
+    "express": "^4.17.1"
+  },
+  "author": "",
+  "license": "ISC"
+}
