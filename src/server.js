@@ -8,14 +8,27 @@ const port = process.env.PORT || 3000;
 // Serve static files from the "public" folder
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Validate email domain with MX record lookup
-function isValidDomain(domain) {
+// Helper function to check MX records for domain
+async function checkMX(domain) {
     return new Promise((resolve, reject) => {
         dns.resolveMx(domain, (err, addresses) => {
             if (err || addresses.length === 0) {
-                reject(false); // Invalid domain if no MX records found
+                reject("MX record not found for " + domain);
             } else {
-                resolve(true); // Valid domain with MX records
+                resolve("MX records found for " + domain);
+            }
+        });
+    });
+}
+
+// Helper function to perform DNS lookup
+async function checkDNS(domain) {
+    return new Promise((resolve, reject) => {
+        dns.resolve(domain, (err, records) => {
+            if (err || records.length === 0) {
+                reject("DNS records not found for " + domain);
+            } else {
+                resolve("DNS records found for " + domain);
             }
         });
     });
@@ -28,29 +41,38 @@ app.post('/validate-emails', async (req, res) => {
     const invalidEmails = [];
 
     // Create promises for each email validation
-    const promises = emails.map((email) => {
+    const promises = emails.map(async (email) => {
         const trimmedEmail = email.trim();
         const domain = trimmedEmail.split('@')[1];
 
-        if (domain && domain.includes('.')) {
-            return isValidDomain(domain)
-                .then((isValid) => {
-                    if (isValid) {
-                        validEmails.push(trimmedEmail);
-                    } else {
-                        invalidEmails.push(trimmedEmail);
-                    }
-                })
-                .catch((error) => {
-                    invalidEmails.push(trimmedEmail);
-                });
-        } else {
-            invalidEmails.push(trimmedEmail);
-            return Promise.resolve(); // Skip invalid email format
+        if (domain) {
+            // Start MX lookup immediately
+            const mxPromise = checkMX(domain);
+
+            // Wait for MX lookup to complete
+            let mxResult;
+            try {
+                mxResult = await mxPromise;
+                validEmails.push(trimmedEmail); // MX lookup successful
+            } catch (err) {
+                invalidEmails.push(trimmedEmail); // MX lookup failed
+                mxResult = err;
+            }
+
+            // DNS lookup should start after 10 seconds from MX lookup starting
+            setTimeout(async () => {
+                try {
+                    await checkDNS(domain);
+                    // DNS check successful
+                } catch (dnsErr) {
+                    // Handle DNS failure
+                    console.log(dnsErr);
+                }
+            }, 10000); // Delay DNS check by 10 seconds
         }
     });
 
-    // Wait for all email validations to complete
+    // Wait for all promises to complete
     await Promise.all(promises);
 
     // Send the response with valid and invalid emails
