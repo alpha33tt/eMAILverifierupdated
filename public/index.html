@@ -1,121 +1,94 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email Validation</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        #validEmailsBox {
-            width: 100%;
-            height: 150px;
-            border: 1px solid #ccc;
-            overflow-y: scroll;
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f9f9f9;
-        }
-        button {
-            padding: 10px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #emailInput {
-            padding: 10px;
-            width: 300px;
-        }
-        .loading {
-            font-size: 16px;
-            color: #4CAF50;
-        }
-    </style>
-</head>
-<body>
+const express = require('express');
+const dns = require('dns');
+const mxRecords = require('mx-records');
+const axios = require('axios');
 
-    <h2>Email Validation Tool</h2>
-    <input type="text" id="emailInput" placeholder="Enter emails separated by commas">
-    <button onclick="validateEmails()">Validate Emails</button>
+const app = express();
+const port = 3000;
 
-    <div class="loading" id="loading" style="display:none;">Loading...</div>
+// Middleware to parse JSON bodies
+app.use(express.json());
 
-    <div id="validEmailsBox"></div>
-    <div id="invalidEmailsBox"></div>
-
-    <button onclick="copyValidatedEmails()">Copy Valid Emails</button>
-
-    <script>
-        const validEmails = [];
-        const invalidEmails = [];
-
-        async function validateEmails() {
-            const emailInput = document.getElementById('emailInput').value;
-            const emails = emailInput.split(',');
-
-            // Clear previous results
-            validEmails.length = 0;
-            invalidEmails.length = 0;
-            document.getElementById('validEmailsBox').innerHTML = '';
-            document.getElementById('invalidEmailsBox').innerHTML = '';
-
-            // Show loading indicator
-            document.getElementById('loading').style.display = 'block';
-
-            // Send emails to the server for validation
-            const response = await fetch('/validate-emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ emails }),
-            });
-
-            const result = await response.json();
-
-            result.validEmails.forEach(email => {
-                validEmails.push(email);
-                const emailDiv = document.createElement('div');
-                emailDiv.textContent = email;
-                document.getElementById('validEmailsBox').appendChild(emailDiv);
-            });
-
-            result.invalidEmails.forEach(email => {
-                invalidEmails.push(email);
-                const emailDiv = document.createElement('div');
-                emailDiv.textContent = email;
-                emailDiv.style.color = 'red'; // Highlight invalid emails
-                document.getElementById('invalidEmailsBox').appendChild(emailDiv);
-            });
-
-            // Hide loading indicator
-            document.getElementById('loading').style.display = 'none';
-        }
-
-        // Copy validated emails to clipboard
-        function copyValidatedEmails() {
-            if (validEmails.length === 0) {
-                alert("No valid emails to copy!");
-                return;
+// Function to perform MX lookup on the domain
+function isValidDomain(domain) {
+    return new Promise((resolve, reject) => {
+        mxRecords(domain, (err, records) => {
+            if (err || records.length === 0) {
+                reject(false);
+            } else {
+                resolve(true);
             }
+        });
+    });
+}
 
-            const textToCopy = validEmails.join('\n');
-            const textArea = document.createElement('textarea');
-            textArea.value = textToCopy;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            alert('Valid emails copied to clipboard!');
+// Function to check if the email domain is blacklisted (for example, using EmailRep.io API)
+async function isBlacklisted(domain) {
+    try {
+        const response = await axios.get(`https://emailrep.io/${domain}`);
+        return response.data.blacklisted ? { blacklisted: true, reason: response.data.reason, score: response.data.score } : { blacklisted: false };
+    } catch (error) {
+        return { blacklisted: false };  // If error occurs, assume not blacklisted
+    }
+}
+
+// Endpoint to validate emails
+app.post('/validate-emails', async (req, res) => {
+    const emails = req.body.emails;
+    const validEmails = [];
+    const invalidEmails = [];
+
+    if (!emails) {
+        return res.status(400).json({ error: 'No emails provided' });
+    }
+
+    for (const email of emails) {
+        const trimmedEmail = email.trim();
+        const domain = trimmedEmail.split('@')[1];
+
+        if (domain && domain.includes('.')) {
+            try {
+                // Perform MX lookup on the domain
+                const isValid = await isValidDomain(domain);
+                if (isValid) {
+                    // Check if domain is blacklisted
+                    const blacklistInfo = await isBlacklisted(domain);
+                    validEmails.push({
+                        email: trimmedEmail,
+                        domain,
+                        blacklisted: blacklistInfo.blacklisted,
+                        reason: blacklistInfo.blacklisted ? blacklistInfo.reason : null,
+                        score: blacklistInfo.blacklisted ? blacklistInfo.score : null
+                    });
+                } else {
+                    invalidEmails.push({
+                        email: trimmedEmail,
+                        reason: 'No MX records found'
+                    });
+                }
+            } catch (error) {
+                invalidEmails.push({
+                    email: trimmedEmail,
+                    reason: 'Error during validation'
+                });
+            }
+        } else {
+            invalidEmails.push({
+                email: trimmedEmail,
+                reason: 'Invalid email format'
+            });
         }
-    </script>
+    }
 
-</body>
-</html>
+    res.json({
+        validEmails: validEmails,
+        invalidEmails: invalidEmails
+    });
+});
+
+// Serve static files (like index.html)
+app.use(express.static('public'));
+
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+});
