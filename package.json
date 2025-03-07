@@ -4,12 +4,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "yarn install"  // make sure this is included for build process
+    "build": "yarn install"
   },
   "dependencies": {
     "express": "^4.17.1",
-    "mx-records": "^2.1.0",  // Ensure this is listed here
-    "dns": "0.0.0"  // You don't need to install this, as it's built-in with Node.js
+    "mx-records": "^2.1.0",
+    "dns": "0.0.0"
   },
   "engines": {
     "node": "16.x"
