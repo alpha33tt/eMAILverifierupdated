@@ -1,21 +1,21 @@
 const express = require('express');
-const dns = require('dns'); // Use the built-in dns module
-const path = require('path');
+const dns = require('dns');
+const mxRecords = require('mx-records');
 
 const app = express();
 const port = 3000;
 
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// Middleware to parse JSON bodies
+app.use(express.json());
 
 // Validate email domain with MX record lookup
 function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
-        dns.resolveMx(domain, (err, addresses) => {
-            if (err || addresses.length === 0) {
-                reject(false); // If MX records not found, invalid domain
+        mxRecords(domain, (err, records) => {
+            if (err || records.length === 0) {
+                reject(false);
             } else {
-                resolve(true); // MX records found, valid domain
+                resolve(true);
             }
         });
     });
@@ -26,6 +26,10 @@ app.post('/validate-emails', async (req, res) => {
     const emails = req.body.emails;
     const validEmails = [];
 
+    if (!emails) {
+        return res.status(400).json({ error: 'No emails provided' });
+    }
+
     for (const email of emails) {
         const trimmedEmail = email.trim();
         const domain = trimmedEmail.split('@')[1];
@@ -35,7 +39,7 @@ app.post('/validate-emails', async (req, res) => {
                 // Perform MX lookup on the domain
                 const isValid = await isValidDomain(domain);
                 if (isValid) {
-                    validEmails.push(trimmedEmail); // Add valid email
+                    validEmails.push(trimmedEmail);
                 }
             } catch (error) {
                 // Domain is not valid
@@ -43,13 +47,11 @@ app.post('/validate-emails', async (req, res) => {
         }
     }
 
-    res.json({ validEmails }); // Send back the valid emails list
+    res.json({ validEmails });
 });
 
-// If no other routes match, serve index.html (this will handle the root path)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-});
+// Serve static files (like index.html)
+app.use(express.static('public'));
 
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
