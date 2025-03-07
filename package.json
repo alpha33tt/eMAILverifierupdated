@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "express": "^4.17.1",
-    "mx-records": "^2.1.0"  // Only mx-records should be here
+    "mx-records": "^2.1.0"
   },
   "engines": {
     "node": "16.x"
