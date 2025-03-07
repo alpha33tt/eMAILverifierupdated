@@ -1,24 +1,24 @@
 const express = require('express');
-const mxRecords = require('mx-records'); // MX records lookup
+const dns = require('dns');
 const app = express();
 const port = 3000;
 
 app.use(express.json());
 
-// MX Lookup for domain
+// Perform MX record lookup using the built-in DNS module
 function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
-        mxRecords(domain, (err, records) => {
-            if (err || records.length === 0) {
+        dns.resolveMx(domain, (err, addresses) => {
+            if (err || addresses.length === 0) {
                 reject('No MX records found');
             } else {
-                resolve(true);
+                resolve(true); // Domain has valid MX records
             }
         });
     });
 }
 
-// Email validation endpoint
+// Endpoint to validate emails
 app.post('/validate-emails', async (req, res) => {
     const emails = req.body.emails;
     const validEmails = [];
