@@ -25,6 +25,7 @@ function isValidDomain(domain) {
 app.post('/validate-emails', async (req, res) => {
     const emails = req.body.emails;
     const validEmails = [];
+    const invalidEmails = [];
 
     for (const email of emails) {
         const trimmedEmail = email.trim();
@@ -36,14 +37,19 @@ app.post('/validate-emails', async (req, res) => {
                 const isValid = await isValidDomain(domain);
                 if (isValid) {
                     validEmails.push(trimmedEmail);
+                } else {
+                    invalidEmails.push(trimmedEmail);
                 }
             } catch (error) {
                 // Domain is not valid
+                invalidEmails.push(trimmedEmail);
             }
+        } else {
+            invalidEmails.push(trimmedEmail);
         }
     }
 
-    res.json({ validEmails });
+    res.json({ validEmails, invalidEmails });
 });
 
 app.listen(port, () => {
