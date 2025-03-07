@@ -1,65 +1,50 @@
 const express = require('express');
-const dns = require('dns'); // Built-in DNS module for domain lookup
-const mxRecords = require('mx-records'); // For MX record lookup
+const dns = require('dns');
+const nodemailer = require('nodemailer');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
-app.use(express.static('public')); // Serve static files from 'public'
-app.use(express.json()); // To parse JSON bodies
+app.use(express.json());
+app.use(express.static('public')); // Ensure static files are served from the 'public' directory
 
-// Function to check if a domain has MX records
+// Function to validate email format
+const isValidEmailFormat = (email) => {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+};
+
+// Function to perform MX lookup
 const checkMXRecord = (domain) => {
   return new Promise((resolve, reject) => {
-    mxRecords(domain, (err, records) => {
-      if (err || records.length === 0) {
-        reject(`No MX records found for domain: ${domain}`);
+    dns.resolveMx(domain, (err, addresses) => {
+      if (err || !addresses || addresses.length === 0) {
+        reject('No MX records found for domain');
       } else {
-        resolve(true);
+        resolve(true); // Valid MX record found
       }
     });
   });
 };
 
-// Function to perform DNS lookup for the domain
-const checkDNS = (domain) => {
-  return new Promise((resolve, reject) => {
-    dns.resolve(domain, 'A', (err, addresses) => {
-      if (err || !addresses) {
-        reject(`No DNS records found for domain: ${domain}`);
-      } else {
-        resolve(true);
-      }
-    });
-  });
-};
-
-// Validate emails and check MX/DNS
-app.post('/validate-emails', async (req, res) => {
-  const emails = req.body.emails;
-
-  const validEmails = [];
-  const invalidEmails = [];
-
-  for (const email of emails) {
-    const domain = email.split('@')[1]; // Get the domain part of the email
-
-    try {
-      // First, check DNS records for the domain
-      await checkDNS(domain);
-
-      // Then, check MX records for the domain
-      await checkMXRecord(domain);
-
-      validEmails.push(email); // If both checks pass, consider the email valid
-    } catch (err) {
-      invalidEmails.push(email); // If any check fails, consider the email invalid
-    }
+// Email validation API
+app.post('/validate-email', async (req, res) => {
+  const email = req.body.email;
+  
+  if (!isValidEmailFormat(email)) {
+    return res.json({ valid: false, message: 'Invalid email format' });
   }
 
-  res.json({ validEmails, invalidEmails });
+  const domain = email.split('@')[1];
+
+  try {
+    await checkMXRecord(domain);  // Check MX record for domain
+    return res.json({ valid: true, message: 'Valid email' });
+  } catch (err) {
+    return res.json({ valid: false, message: 'No valid MX records found for the email domain' });
+  }
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Server running at http://localhost:${port}`);
 });
