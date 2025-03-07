@@ -1,13 +1,22 @@
 const express = require('express');
 const dns = require('dns');
 const bodyParser = require('body-parser');
+const path = require('path');
 const cors = require('cors');
 
 const app = express();
 
+// Middleware to serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Middleware
 app.use(bodyParser.json());
 app.use(cors());
+
+// Serve index.html when the root URL is accessed
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // POST request to validate email
 app.post('/validate-email', (req, res) => {
