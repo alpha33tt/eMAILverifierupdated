@@ -1,50 +1,44 @@
 const express = require('express');
 const dns = require('dns');
-const nodemailer = require('nodemailer');
+const bodyParser = require('body-parser');
+const cors = require('cors');
 
 const app = express();
-const port = 3000;
 
-app.use(express.json());
-app.use(express.static('public')); // Ensure static files are served from the 'public' directory
+// Middleware
+app.use(bodyParser.json());
+app.use(cors());
 
-// Function to validate email format
-const isValidEmailFormat = (email) => {
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return regex.test(email);
-};
-
-// Function to perform MX lookup
-const checkMXRecord = (domain) => {
-  return new Promise((resolve, reject) => {
-    dns.resolveMx(domain, (err, addresses) => {
-      if (err || !addresses || addresses.length === 0) {
-        reject('No MX records found for domain');
-      } else {
-        resolve(true); // Valid MX record found
-      }
-    });
-  });
-};
-
-// Email validation API
-app.post('/validate-email', async (req, res) => {
+// POST request to validate email
+app.post('/validate-email', (req, res) => {
   const email = req.body.email;
-  
-  if (!isValidEmailFormat(email)) {
-    return res.json({ valid: false, message: 'Invalid email format' });
+
+  // Basic email format validation (to ensure it's a valid email format)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).send({ valid: false, message: 'Invalid email format' });
   }
 
+  // Extract the domain from the email
   const domain = email.split('@')[1];
 
-  try {
-    await checkMXRecord(domain);  // Check MX record for domain
-    return res.json({ valid: true, message: 'Valid email' });
-  } catch (err) {
-    return res.json({ valid: false, message: 'No valid MX records found for the email domain' });
-  }
+  // Use DNS to lookup MX records for the domain
+  dns.resolveMx(domain, (err, addresses) => {
+    if (err) {
+      return res.status(400).send({ valid: false, message: 'Invalid domain or MX records not found' });
+    }
+
+    // Check if MX records are found
+    if (addresses && addresses.length > 0) {
+      return res.status(200).send({ valid: true, message: 'Email is valid' });
+    } else {
+      return res.status(400).send({ valid: false, message: 'No MX records found for this domain' });
+    }
+  });
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
