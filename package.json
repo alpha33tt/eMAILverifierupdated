@@ -1,21 +1,23 @@
 {
   "name": "email-validation-app",
   "version": "1.0.0",
-  "description": "An email validation application using MX records, blacklist checks, and SMTP validation",
+  "description": "Email validation and lookup application",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "express": "^4.17.1",
-    "axios": "^0.26.1",
-    "whois": "^2.0.0",
-    "dns": "^0.2.2",
-    "nodemon": "^2.0.19"
+    "mx-records": "^1.0.0",
+    "whois": "^2.5.0",
+    "dns": "^1.2.3",
+    "pino": "^8.7.0"
   },
-  "devDependencies": {},
-  "engines": {
-    "node": "16.x"
-  }
+  "devDependencies": {
+    "yarn": "^1.22.22"
+  },
+  "resolutions": {
+    "hawk": "^7.0.0"
+  },
+  "license": "MIT"
 }
