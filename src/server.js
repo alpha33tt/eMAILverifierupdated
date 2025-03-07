@@ -6,7 +6,7 @@ const app = express();
 const port = 3000;
 
 // Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Validate email domain with MX record lookup
 function isValidDomain(domain) {
@@ -48,7 +48,7 @@ app.post('/validate-emails', async (req, res) => {
 
 // If no other routes match, serve index.html
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
 app.listen(port, () => {
