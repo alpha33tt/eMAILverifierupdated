@@ -1,52 +1,52 @@
+// server.js (inside src)
 const express = require('express');
-const dns = require('dns');
-const bodyParser = require('body-parser');
+const mxRecords = require('mx-records');
 const path = require('path');
-const cors = require('cors');
 
 const app = express();
+const port = process.env.PORT || 3000;
 
-// Middleware to serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from the "public" folder
+app.use(express.static(path.join(__dirname, '../public')));
 
-// Middleware to parse JSON requests
-app.use(bodyParser.json());
-app.use(cors());
+// Validate email domain with MX record lookup
+function isValidDomain(domain) {
+    return new Promise((resolve, reject) => {
+        mxRecords(domain, (err, records) => {
+            if (err || records.length === 0) {
+                reject(false);
+            } else {
+                resolve(true);
+            }
+        });
+    });
+}
 
-// Serve 'index.html' on the root URL
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Endpoint to validate emails
+app.post('/validate-emails', async (req, res) => {
+    const emails = req.body.emails;
+    const validEmails = [];
 
-// Endpoint to validate email
-app.post('/validate-email', (req, res) => {
-  const email = req.body.email;
+    for (const email of emails) {
+        const trimmedEmail = email.trim();
+        const domain = trimmedEmail.split('@')[1];
 
-  // Basic email format validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return res.status(400).send({ valid: false, message: 'Invalid email format' });
-  }
-
-  const domain = email.split('@')[1];
-
-  // Perform MX record lookup to check if the domain has valid email servers
-  dns.resolveMx(domain, (err, addresses) => {
-    if (err) {
-      return res.status(400).send({ valid: false, message: 'Invalid domain or MX records not found' });
+        if (domain && domain.includes('.')) {
+            try {
+                // Perform MX lookup on the domain
+                const isValid = await isValidDomain(domain);
+                if (isValid) {
+                    validEmails.push(trimmedEmail);
+                }
+            } catch (error) {
+                // Domain is not valid
+            }
+        }
     }
 
-    // Check if MX records exist for the domain
-    if (addresses && addresses.length > 0) {
-      return res.status(200).send({ valid: true, message: 'Email is valid' });
-    } else {
-      return res.status(400).send({ valid: false, message: 'No MX records found for this domain' });
-    }
-  });
+    res.json({ validEmails });
 });
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
 });
