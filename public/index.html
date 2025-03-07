@@ -53,69 +53,70 @@
     <button onclick="copyValidatedEmails()">Copy Valid Emails</button>
 
     <script>
-        const validEmails = [];
-        const invalidEmails = [];
+    const validEmails = [];
+    const invalidEmails = [];
 
-        async function validateEmails() {
-            const emailInput = document.getElementById('emailInput').value;
-            const emails = emailInput.split(',');
+    async function validateEmails() {
+        const emailInput = document.getElementById('emailInput').value;
+        const emails = emailInput.split(',');
 
-            // Clear previous results
-            validEmails.length = 0;
-            invalidEmails.length = 0;
-            document.getElementById('validEmailsBox').innerHTML = '';
-            document.getElementById('invalidEmailsBox').innerHTML = '';
+        // Clear previous results
+        validEmails.length = 0;
+        invalidEmails.length = 0;
+        document.getElementById('validEmailsBox').innerHTML = '';
+        document.getElementById('invalidEmailsBox').innerHTML = '';
 
-            // Show loading indicator
-            document.getElementById('loading').style.display = 'block';
+        // Show loading indicator
+        document.getElementById('loading').style.display = 'block';
 
-            // Send emails to the server for validation
-            const response = await fetch('/validate-emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ emails }),
-            });
+        // Send emails to the server for validation
+        const response = await fetch('/validate-emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ emails }),
+        });
 
-            const result = await response.json();
+        const result = await response.json();
 
-            result.validEmails.forEach(email => {
-                validEmails.push(email);
-                const emailDiv = document.createElement('div');
-                emailDiv.textContent = `Email: ${email.email}, Domain: ${email.domain}, Blacklisted: ${email.blacklist}`;
-                document.getElementById('validEmailsBox').appendChild(emailDiv);
-            });
+        result.validEmails.forEach(email => {
+            validEmails.push(email);
+            const emailDiv = document.createElement('div');
+            emailDiv.textContent = `Email: ${email.email}, Domain: ${email.domain}, Blacklisted: ${email.blacklist}, Registrar: ${email.registrar}`;
+            document.getElementById('validEmailsBox').appendChild(emailDiv);
+        });
 
-            result.invalidEmails.forEach(email => {
-                invalidEmails.push(email);
-                const emailDiv = document.createElement('div');
-                emailDiv.textContent = `${email.email} - Reason: ${email.reason}`;
-                emailDiv.style.color = 'red'; // Highlight invalid emails
-                document.getElementById('invalidEmailsBox').appendChild(emailDiv);
-            });
+        result.invalidEmails.forEach(email => {
+            invalidEmails.push(email);
+            const emailDiv = document.createElement('div');
+            emailDiv.textContent = `${email.email} - Reason: ${email.reason}`;
+            emailDiv.style.color = 'red'; // Highlight invalid emails
+            document.getElementById('invalidEmailsBox').appendChild(emailDiv);
+        });
 
-            // Hide loading indicator
-            document.getElementById('loading').style.display = 'none';
+        // Hide loading indicator
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    // Copy validated emails to clipboard
+    function copyValidatedEmails() {
+        if (validEmails.length === 0) {
+            alert("No valid emails to copy!");
+            return;
         }
 
-        // Copy validated emails to clipboard
-        function copyValidatedEmails() {
-            if (validEmails.length === 0) {
-                alert("No valid emails to copy!");
-                return;
-            }
+        const textToCopy = validEmails.map(email => `${email.email}`).join('\n');
+        const textArea = document.createElement('textarea');
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Valid emails copied to clipboard!');
+    }
+</script>
 
-            const textToCopy = validEmails.map(email => `${email.email}`).join('\n');
-            const textArea = document.createElement('textarea');
-            textArea.value = textToCopy;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            alert('Valid emails copied to clipboard!');
-        }
-    </script>
 
 </body>
 </html>
