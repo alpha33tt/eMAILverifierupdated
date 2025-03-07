@@ -1,14 +1,16 @@
 {
   "name": "email-validation-app",
   "version": "1.0.0",
-  "description": "Email Validation App",
+  "description": "Email validation tool with MX record lookup",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
   "dependencies": {
     "express": "^4.17.1",
-    "body-parser": "^1.19.0",
-    "cors": "^2.8.5"
-  }
+    "mx-records": "^2.1.0",
+    "nodemon": "^2.0.19"
+  },
+  "license": "ISC"
 }
