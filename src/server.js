@@ -39,10 +39,10 @@ app.post('/validate-emails', async (req, res) => {
     for (const email of emails) {
         const trimmedEmail = email.trim();
 
-        // Validate email format
+        // Check for email format validity
         if (!isValidEmailFormat(trimmedEmail)) {
             invalidEmails.push({ email: trimmedEmail, reason: 'Invalid email format' });
-            continue;
+            continue;  // Skip further validation if the format is invalid
         }
 
         const domain = trimmedEmail.split('@')[1];
@@ -52,7 +52,7 @@ app.post('/validate-emails', async (req, res) => {
                 // Perform MX lookup on the domain
                 const isValid = await isValidDomain(domain);
                 if (isValid) {
-                    validEmails.push(trimmedEmail);
+                    validEmails.push(trimmedEmail);  // Email is valid if MX record found
                 } else {
                     invalidEmails.push({ email: trimmedEmail, reason: 'No MX records found' });
                 }
@@ -64,7 +64,7 @@ app.post('/validate-emails', async (req, res) => {
         }
     }
 
-    // Properly format the invalid emails to return readable strings
+    // Format the invalid emails to return readable strings
     const formattedInvalidEmails = invalidEmails.map(item => {
         return `${item.email} - Reason: ${item.reason}`;
     });
