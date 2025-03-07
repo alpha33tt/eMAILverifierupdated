@@ -1,23 +1,20 @@
 {
   "name": "email-validation-app",
   "version": "1.0.0",
-  "description": "Email validation and lookup application",
+  "description": "An email validation application using MX records",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/server.js"
   },
   "dependencies": {
-    "whois": "^2.5.0",
-    "pino": "^8.7.0",
-    "axios": "^1.4.0",
-    "express": "^4.18.2"
+    "express": "^4.17.1",
+    "axios": "^0.26.1",
+    "whois": "^2.0.0",
+    "nodemon": "^2.0.19"
   },
-  "devDependencies": {
-    "yarn": "^1.22.22"
-  },
-  "resolutions": {
-    "hawk": "^7.0.0"
-  },
-  "license": "MIT"
+  "devDependencies": {},
+  "engines": {
+    "node": "16.x"
+  }
 }
