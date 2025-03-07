@@ -15,6 +15,9 @@
     "nodemon": "^2.0.19"
   },
   "devDependencies": {},
+  "resolutions": {
+    "hawk": "^7.0.0"
+  },
   "engines": {
     "node": "16.x"
   }
