@@ -1,7 +1,7 @@
 {
   "name": "email-validation-app",
   "version": "1.0.0",
-  "description": "An email validation application using MX records, blacklist checks, and SMTP validation",
+  "description": "An email validation application using MX records",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -11,13 +11,10 @@
     "express": "^4.17.1",
     "axios": "^0.26.1",
     "whois": "^2.0.0",
-    "dns": "^0.2.2",
+    "dns": "^0.2.2", 
     "nodemon": "^2.0.19"
   },
   "devDependencies": {},
-  "resolutions": {
-    "hawk": "^7.0.0"
-  },
   "engines": {
     "node": "16.x"
   }
