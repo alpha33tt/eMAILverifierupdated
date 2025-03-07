@@ -64,7 +64,12 @@ app.post('/validate-emails', async (req, res) => {
         }
     }
 
-    res.json({ validEmails, invalidEmails });
+    // Properly format the invalid emails to return readable strings
+    const formattedInvalidEmails = invalidEmails.map(item => {
+        return `${item.email} - Reason: ${item.reason}`;
+    });
+
+    res.json({ validEmails, invalidEmails: formattedInvalidEmails });
 });
 
 // Serve static files (like index.html)
