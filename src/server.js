@@ -36,14 +36,20 @@ async function isBlacklisted(domain) {
     }
 }
 
-// Function to get WHOIS data for a domain
-function getDomainWhois(domain) {
+// Function to get WHOIS data for a domain and extract the registrar name
+function getDomainRegistrar(domain) {
     return new Promise((resolve, reject) => {
         whois.lookup(domain, (err, data) => {
             if (err) {
                 reject('Unable to retrieve WHOIS data');
             } else {
-                resolve(data);
+                // Attempt to extract registrar name from WHOIS data
+                const registrarMatch = data.match(/Registrar:\s*(.*)/);
+                if (registrarMatch) {
+                    resolve(registrarMatch[1].trim());
+                } else {
+                    resolve('Registrar not found');
+                }
             }
         });
     });
@@ -69,12 +75,12 @@ app.post('/validate-emails', async (req, res) => {
 
                 if (isDomainValid) {
                     const blacklistStatus = await isBlacklisted(domain);
-                    const whoisData = await getDomainWhois(domain);
+                    const registrar = await getDomainRegistrar(domain);
                     validEmails.push({
                         email: trimmedEmail,
                         domain: domain,
                         blacklist: blacklistStatus,
-                        whois: whoisData
+                        registrar: registrar
                     });
                 } else {
                     invalidEmails.push({
