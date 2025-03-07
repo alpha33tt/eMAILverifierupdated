@@ -1,6 +1,5 @@
-// server.js (inside src)
 const express = require('express');
-const mxRecords = require('mx-records');
+const dns = require('dns');
 const path = require('path');
 
 const app = express();
@@ -12,8 +11,8 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Validate email domain with MX record lookup
 function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
-        mxRecords(domain, (err, records) => {
-            if (err || records.length === 0) {
+        dns.resolveMx(domain, (err, addresses) => {
+            if (err || addresses.length === 0) {
                 reject(false);
             } else {
                 resolve(true);
