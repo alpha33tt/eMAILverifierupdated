@@ -47,10 +47,7 @@
 
     <div class="loading" id="loading" style="display:none;">Loading...</div>
 
-    <h3>Valid Emails</h3>
     <div id="validEmailsBox"></div>
-
-    <h3>Invalid Emails</h3>
     <div id="invalidEmailsBox"></div>
 
     <button onclick="copyValidatedEmails()">Copy Valid Emails</button>
@@ -78,22 +75,22 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ emails })
+                body: JSON.stringify({ emails }),
             });
 
             const result = await response.json();
 
             result.validEmails.forEach(email => {
-                validEmails.push(email.email);
+                validEmails.push(email);
                 const emailDiv = document.createElement('div');
-                emailDiv.textContent = `Email: ${email.email}, Domain: ${email.domain}, Blacklisted: ${email.blacklisted ? "Yes" : "No"}`;
+                emailDiv.textContent = `Email: ${email.email}, Domain: ${email.domain}, Blacklisted: ${email.blacklist}`;
                 document.getElementById('validEmailsBox').appendChild(emailDiv);
             });
 
             result.invalidEmails.forEach(email => {
-                invalidEmails.push(email.email);
+                invalidEmails.push(email);
                 const emailDiv = document.createElement('div');
-                emailDiv.textContent = `Email: ${email.email}, Reason: ${email.reason}`;
+                emailDiv.textContent = `${email.email} - Reason: ${email.reason}`;
                 emailDiv.style.color = 'red'; // Highlight invalid emails
                 document.getElementById('invalidEmailsBox').appendChild(emailDiv);
             });
@@ -109,7 +106,7 @@
                 return;
             }
 
-            const textToCopy = validEmails.join('\n');
+            const textToCopy = validEmails.map(email => `${email.email}`).join('\n');
             const textArea = document.createElement('textarea');
             textArea.value = textToCopy;
             document.body.appendChild(textArea);
