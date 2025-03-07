@@ -13,9 +13,9 @@ function isValidDomain(domain) {
     return new Promise((resolve, reject) => {
         dns.resolveMx(domain, (err, addresses) => {
             if (err || addresses.length === 0) {
-                reject(false);
+                reject(false); // Invalid domain if no MX records found
             } else {
-                resolve(true);
+                resolve(true); // Valid domain with MX records
             }
         });
     });
@@ -27,28 +27,33 @@ app.post('/validate-emails', async (req, res) => {
     const validEmails = [];
     const invalidEmails = [];
 
-    for (const email of emails) {
+    // Create promises for each email validation
+    const promises = emails.map((email) => {
         const trimmedEmail = email.trim();
         const domain = trimmedEmail.split('@')[1];
 
         if (domain && domain.includes('.')) {
-            try {
-                // Perform MX lookup on the domain
-                const isValid = await isValidDomain(domain);
-                if (isValid) {
-                    validEmails.push(trimmedEmail);
-                } else {
+            return isValidDomain(domain)
+                .then((isValid) => {
+                    if (isValid) {
+                        validEmails.push(trimmedEmail);
+                    } else {
+                        invalidEmails.push(trimmedEmail);
+                    }
+                })
+                .catch((error) => {
                     invalidEmails.push(trimmedEmail);
-                }
-            } catch (error) {
-                // Domain is not valid
-                invalidEmails.push(trimmedEmail);
-            }
+                });
         } else {
             invalidEmails.push(trimmedEmail);
+            return Promise.resolve(); // Skip invalid email format
         }
-    }
+    });
 
+    // Wait for all email validations to complete
+    await Promise.all(promises);
+
+    // Send the response with valid and invalid emails
     res.json({ validEmails, invalidEmails });
 });
 
