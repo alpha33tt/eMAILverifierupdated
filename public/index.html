@@ -33,9 +33,9 @@
             padding: 10px;
             width: 300px;
         }
-        #loading {
-            display: none;
-            margin-top: 20px;
+        .loading {
+            font-size: 16px;
+            color: #4CAF50;
         }
     </style>
 </head>
@@ -44,28 +44,30 @@
     <h2>Email Validation Tool</h2>
     <input type="text" id="emailInput" placeholder="Enter emails separated by commas">
     <button onclick="validateEmails()">Validate Emails</button>
-    
-    <div id="loading">
-        <p>Validating emails... <span id="loader">🔄</span></p>
-    </div>
+
+    <div class="loading" id="loading" style="display:none;">Loading...</div>
 
     <div id="validEmailsBox"></div>
+    <div id="invalidEmailsBox"></div>
 
     <button onclick="copyValidatedEmails()">Copy Valid Emails</button>
 
     <script>
         const validEmails = [];
+        const invalidEmails = [];
 
         async function validateEmails() {
             const emailInput = document.getElementById('emailInput').value;
             const emails = emailInput.split(',');
 
-            // Show loading icon
-            document.getElementById('loading').style.display = 'block';
-
             // Clear previous results
             validEmails.length = 0;
+            invalidEmails.length = 0;
             document.getElementById('validEmailsBox').innerHTML = '';
+            document.getElementById('invalidEmailsBox').innerHTML = '';
+
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
 
             // Send emails to the server for validation
             const response = await fetch('/validate-emails', {
@@ -78,10 +80,6 @@
 
             const result = await response.json();
 
-            // Hide loading icon after processing
-            document.getElementById('loading').style.display = 'none';
-
-            // Show valid emails
             result.validEmails.forEach(email => {
                 validEmails.push(email);
                 const emailDiv = document.createElement('div');
@@ -89,17 +87,16 @@
                 document.getElementById('validEmailsBox').appendChild(emailDiv);
             });
 
-            // Optionally, show invalid emails if needed
-            if (result.invalidEmails.length > 0) {
-                const invalidEmailsDiv = document.createElement('div');
-                invalidEmailsDiv.textContent = "Invalid Emails: ";
-                result.invalidEmails.forEach(email => {
-                    const invalidEmailDiv = document.createElement('div');
-                    invalidEmailDiv.textContent = email;
-                    invalidEmailsDiv.appendChild(invalidEmailDiv);
-                });
-                document.getElementById('validEmailsBox').appendChild(invalidEmailsDiv);
-            }
+            result.invalidEmails.forEach(email => {
+                invalidEmails.push(email);
+                const emailDiv = document.createElement('div');
+                emailDiv.textContent = email;
+                emailDiv.style.color = 'red'; // Highlight invalid emails
+                document.getElementById('invalidEmailsBox').appendChild(emailDiv);
+            });
+
+            // Hide loading indicator
+            document.getElementById('loading').style.display = 'none';
         }
 
         // Copy validated emails to clipboard
