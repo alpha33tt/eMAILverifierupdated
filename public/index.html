@@ -1,53 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email Validation</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Validator</title>
+  <style>
+    .valid-emails-box {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      width: 300px;
+      max-height: 200px;
+      overflow-y: auto;
+      background-color: #f0f0f0;
+    }
+  </style>
 </head>
 <body>
-    <h1>Email Validation Tool</h1>
-    
-    <textarea id="emailInput" placeholder="Enter emails separated by commas..."></textarea>
-    <button onclick="validateEmails()">Validate Emails</button>
-    
-    <div id="validEmailsBox" style="margin-top: 20px;">
-        <h3>Valid Emails:</h3>
-        <textarea id="validEmails" readonly rows="5" cols="30"></textarea>
-        <button onclick="copyValidEmails()">Copy Valid Emails</button>
-    </div>
 
-    <script>
-        function validateEmails() {
-            const emailInput = document.getElementById("emailInput").value;
-            const emails = emailInput.split(',').map(email => email.trim());
+  <h1>Email Validator</h1>
 
-            fetch('/validate-emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ emails: emails })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const validEmails = data.validEmails;
-                displayValidEmails(validEmails);
-            })
-            .catch(error => console.error('Error:', error));
-        }
+  <input type="email" id="emailInput" placeholder="Enter email" required />
+  <button id="validateButton">Validate Email</button>
 
-        function displayValidEmails(validEmails) {
-            const validEmailsBox = document.getElementById("validEmails");
-            validEmailsBox.value = validEmails.join("\n");
-        }
+  <div class="valid-emails-box" id="validEmailsBox">
+    <h3>Valid Emails:</h3>
+    <ul id="validEmailsList"></ul>
+  </div>
 
-        function copyValidEmails() {
-            const validEmailsBox = document.getElementById("validEmails");
-            validEmailsBox.select();
-            document.execCommand('copy');
-            alert("Valid emails copied to clipboard!");
-        }
-    </script>
+  <script>
+    document.getElementById("validateButton").addEventListener("click", async () => {
+      const email = document.getElementById("emailInput").value;
+      const response = await fetch('/validate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const result = await response.json();
+
+      if (result.valid) {
+        const validEmailList = document.getElementById("validEmailsList");
+        const newListItem = document.createElement("li");
+        newListItem.textContent = email;
+        validEmailList.appendChild(newListItem);
+
+        // Clear the input field after successful validation
+        document.getElementById("emailInput").value = '';
+      } else {
+        alert(result.message);  // Display error message
+      }
+    });
+  </script>
+
 </body>
 </html>
